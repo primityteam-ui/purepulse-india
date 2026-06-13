@@ -1,44 +1,28 @@
 'use client'
 
-import { signIn, useSession } from 'next-auth/react'
+import { Suspense, useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { status } = useSession()
-
-  const [form, setForm] = useState({
-    email: '',
-    password: ''
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
   const callbackUrl = searchParams.get('callbackUrl') || '/admin'
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      router.replace(callbackUrl)
-    }
-  }, [status, router, callbackUrl])
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function updateField(name, value) {
-    setForm((current) => ({
-      ...current,
-      [name]: value
-    }))
-  }
-
-  async function handleLogin(event) {
-    event.preventDefault()
-    setLoading(true)
+  async function handleSubmit(e) {
+    e.preventDefault()
     setError('')
+    setLoading(true)
 
     const result = await signIn('credentials', {
-      email: form.email,
-      password: form.password,
+      email,
+      password,
       redirect: false,
       callbackUrl
     })
@@ -50,60 +34,87 @@ export default function AdminLoginPage() {
       return
     }
 
-    router.replace(callbackUrl)
+    router.push(callbackUrl)
+    router.refresh()
   }
 
   return (
-    <section className="min-h-[calc(100vh-160px)] bg-green-950 py-20 text-white">
-      <div className="container-premium">
-        <div className="mx-auto max-w-md rounded-[2rem] border border-white/10 bg-white p-7 text-green-950 shadow-2xl">
-          <div className="mb-7 text-center">
-            <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-green-950 text-xl font-black text-[#f1cf75]">
-              PP
-            </div>
-            <h1 className="text-3xl font-black">Store Owner Login</h1>
-            <p className="mt-2 text-sm font-semibold text-green-950/55">
-              Login to manage products, prices, images, orders, and settings.
-            </p>
+    <div className="min-h-screen bg-[#f8f5ec] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md rounded-[2rem] bg-white border border-emerald-100 shadow-xl p-8">
+        <div className="text-center mb-8">
+          <p className="text-sm font-semibold tracking-[0.25em] uppercase text-emerald-700">
+            PurePulse India
+          </p>
+          <h1 className="mt-3 text-3xl font-bold text-stone-900">
+            Admin Login
+          </h1>
+          <p className="mt-2 text-sm text-stone-600">
+            Sign in to manage products, orders, settings, and bulk negotiations.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-stone-700 mb-2">
+              Admin Email
+            </label>
+            <input
+              type="email"
+              className="input-premium w-full"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@purepulseindia.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-stone-700 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              className="input-premium w-full"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter admin password"
+              required
+            />
           </div>
 
           {error && (
-            <div className="mb-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="grid gap-4">
-            <input
-              className="input-premium"
-              type="email"
-              placeholder="Admin email"
-              value={form.email}
-              onChange={(e) => updateField('email', e.target.value)}
-              required
-            />
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Signing in...' : 'Login to Dashboard'}
+          </button>
+        </form>
 
-            <input
-              className="input-premium"
-              type="password"
-              placeholder="Admin password"
-              value={form.password}
-              onChange={(e) => updateField('password', e.target.value)}
-              required
-            />
-
-            <button disabled={loading} className="btn-primary w-full">
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-          </form>
-
-          <div className="mt-6 rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-950/65">
-            Demo admin from your `.env.local`:
-            <br />
-            <strong>admin@purepulseindia.com</strong>
-          </div>
-        </div>
+        <p className="mt-6 text-center text-xs text-stone-500">
+          Protected owner dashboard for PurePulse India.
+        </p>
       </div>
-    </section>
+    </div>
+  )
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#f8f5ec] flex items-center justify-center">
+          <p className="text-stone-600">Loading admin login...</p>
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
   )
 }
