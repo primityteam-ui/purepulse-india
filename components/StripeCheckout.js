@@ -1,0 +1,1 @@
+export default function StripeCheckout(){return <div className='card p-4'><b>Stripe card payment</b><p className='text-sm text-gray-600'>Stripe PaymentIntent API is wired. Add Stripe Elements UI when your keys are ready.</p></div>}

@@ -1,0 +1,2 @@
+import {stripe} from '@/lib/stripe'
+export async function POST(request){try{if(!stripe)return Response.json({error:'Stripe key missing'},{status:500});const {amount,currency,customerEmail,orderData}=await request.json();const p=await stripe.paymentIntents.create({amount:Math.round(Number(amount)*100),currency:currency.toLowerCase(),receipt_email:customerEmail,metadata:{orderData:JSON.stringify(orderData||{})}});return Response.json({clientSecret:p.client_secret})}catch(e){return Response.json({error:e.message},{status:400})}}

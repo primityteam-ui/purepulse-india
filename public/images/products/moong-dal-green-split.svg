@@ -1,0 +1,29 @@
+<svg width="900" height="650" viewBox="0 0 900 650" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="650" rx="48" fill="#F8F0DF"/>
+  <rect x="28" y="28" width="844" height="594" rx="40" fill="#FFF8E8"/>
+  <circle cx="735" cy="90" r="140" fill="#DFF7E8"/>
+  <circle cx="145" cy="555" r="170" fill="#F3D27A" opacity="0.35"/>
+
+  <g transform="translate(300 145)">
+    <ellipse cx="150" cy="320" rx="255" ry="52" fill="#0B3D2B" opacity="0.14"/>
+    <path d="M60 115C77 45 223 45 240 115L288 342C302 407 257 465 190 465H110C43 465-2 407 12 342L60 115Z" fill="#FFFFFF"/>
+    <path d="M74 126C88 70 212 70 226 126L270 338C282 391 246 438 190 438H110C54 438 18 391 30 338L74 126Z" fill="#F9E9C8"/>
+    <path d="M78 142H222L258 318H42L78 142Z" fill="#FFFFFF" opacity="0.62"/>
+    <g clip-path="url(#clip)">
+      <circle cx="35" cy="65" r="9" fill="#6ea64b" opacity="0.95"/><circle cx="62" cy="70" r="10" fill="#a9cf63" opacity="0.95"/><circle cx="80" cy="67" r="11" fill="#477d36" opacity="0.95"/><circle cx="98" cy="72" r="12" fill="#6ea64b" opacity="0.95"/><circle cx="116" cy="69" r="13" fill="#a9cf63" opacity="0.95"/><circle cx="143" cy="66" r="9" fill="#477d36" opacity="0.95"/><circle cx="161" cy="71" r="10" fill="#6ea64b" opacity="0.95"/><circle cx="179" cy="68" r="11" fill="#a9cf63" opacity="0.95"/><circle cx="197" cy="65" r="12" fill="#477d36" opacity="0.95"/><circle cx="215" cy="70" r="13" fill="#6ea64b" opacity="0.95"/><circle cx="242" cy="67" r="9" fill="#a9cf63" opacity="0.95"/><circle cx="260" cy="72" r="10" fill="#477d36" opacity="0.95"/><circle cx="278" cy="69" r="11" fill="#6ea64b" opacity="0.95"/><circle cx="36" cy="88" r="12" fill="#a9cf63" opacity="0.95"/><circle cx="63" cy="93" r="13" fill="#477d36" opacity="0.95"/><circle cx="81" cy="90" r="9" fill="#6ea64b" opacity="0.95"/><circle cx="99" cy="87" r="10" fill="#a9cf63" opacity="0.95"/><circle cx="117" cy="92" r="11" fill="#477d36" opacity="0.95"/><circle cx="135" cy="89" r="12" fill="#6ea64b" opacity="0.95"/><circle cx="162" cy="94" r="13" fill="#a9cf63" opacity="0.95"/><circle cx="180" cy="91" r="9" fill="#477d36" opacity="0.95"/><circle cx="198" cy="88" r="10" fill="#6ea64b" opacity="0.95"/><circle cx="216" cy="93" r="11" fill="#a9cf63" opacity="0.95"/><circle cx="243" cy="90" r="12" fill="#477d36" opacity="0.95"/><circle cx="261" cy="87" r="13" fill="#6ea64b" opacity="0.95"/><circle cx="279" cy="92" r="9" fill="#a9cf63" opacity="0.95"/><circle cx="37" cy="111" r="10" fill="#477d36" opacity="0.95"/><circle cx="55" cy="116" r="11" fill="#6ea64b" opacity="0.95"/><circle cx="82" cy="113" r="12" fill="#a9cf63" opacity="0.95"/><circle cx="100" cy="110" r="13" fill="#477d36" opacity="0.95"/><circle cx="118" cy="115" r="9" fill="#6ea64b" opacity="0.95"/><circle cx="136" cy="112" r="10" fill="#a9cf63" opacity="0.95"/><circle cx="163" cy="109" r="11" fill="#477d36" opacity="0.95"/><circle cx="181" cy="114" r="12" fill="#6ea64b" opacity="0.95"/><circle cx="199" cy="111" r="13" fill="#a9cf63" opacity="0.95"/><circle cx="217" cy="116" r="9" fill="#477d36" opacity="0.95"/><circle cx="235" cy="113" r="10" fill="#6ea64b" opacity="0.95"/><circle cx="262" cy="110" r="11" fill="#a9cf63" opacity="0.95"/><circle cx="280" cy="115" r="12" fill="#477d36" opacity="0.95"/><circle cx="38" cy="134" r="13" fill="#6ea64b" opacity="0.95"/><circle cx="56" cy="131" r="9" fill="#a9cf63" opacity="0.95"/><circle cx="83" cy="136" r="10" fill="#477d36" opacity="0.95"/><circle cx="101" cy="133" r="11" fill="#6ea64b" opacity="0.95"/><circle cx="119" cy="138" r="12" fill="#a9cf63" opacity="0.95"/><circle cx="137" cy="135" r="13" fill="#477d36" opacity="0.95"/><circle cx="155" cy="132" r="9" fill="#6ea64b" opacity="0.95"/><circle cx="182" cy="137" r="10" fill="#a9cf63" opacity="0.95"/><circle cx="200" cy="134" r="11" fill="#477d36" opacity="0.95"/><circle cx="218" cy="131" r="12" fill="#6ea64b" opacity="0.95"/><circle cx="236" cy="136" r="13" fill="#a9cf63" opacity="0.95"/><circle cx="263" cy="133" r="9" fill="#477d36" opacity="0.95"/><circle cx="281" cy="138" r="10" fill="#6ea64b" opacity="0.95"/><circle cx="39" cy="157" r="11" fill="#a9cf63" opacity="0.95"/><circle cx="57" cy="154" r="12" fill="#477d36" opacity="0.95"/><circle cx="75" cy="159" r="13" fill="#6ea64b" opacity="0.95"/><circle cx="102" cy="156" r="9" fill="#a9cf63" opacity="0.95"/><circle cx="120" cy="153" r="10" fill="#477d36" opacity="0.95"/><circle cx="138" cy="158" r="11" fill="#6ea64b" opacity="0.95"/><circle cx="156" cy="155" r="12" fill="#a9cf63" opacity="0.95"/><circle cx="183" cy="160" r="13" fill="#477d36" opacity="0.95"/><circle cx="201" cy="157" r="9" fill="#6ea64b" opacity="0.95"/><circle cx="219" cy="154" r="10" fill="#a9cf63" opacity="0.95"/><circle cx="237" cy="159" r="11" fill="#477d36" opacity="0.95"/><circle cx="255" cy="156" r="12" fill="#6ea64b" opacity="0.95"/><circle cx="282" cy="153" r="13" fill="#a9cf63" opacity="0.95"/>
+    </g>
+    <path d="M78 142H222L258 318H42L78 142Z" stroke="#0B3D2B" stroke-opacity="0.14" stroke-width="5"/>
+    <rect x="76" y="72" width="148" height="70" rx="28" fill="#0B3D2B"/>
+    <text x="150" y="116" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="900" fill="#F1CF75">PURE</text>
+  </g>
+
+  <text x="450" y="505" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="900" fill="#0B3D2B">Moong Dal</text>
+  <text x="450" y="553" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#1F6B4A">Green Split</text>
+  <text x="450" y="594" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="800" fill="#8A641F">PurePulse India • Organic • Lab Tested</text>
+
+  <defs>
+    <clipPath id="clip">
+      <path d="M78 142H222L258 318H42L78 142Z"/>
+    </clipPath>
+  </defs>
+</svg>

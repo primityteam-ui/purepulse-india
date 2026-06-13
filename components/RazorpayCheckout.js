@@ -1,0 +1,1 @@
+export default function RazorpayCheckout(){return <div className='card p-4'><b>Razorpay payment</b><p className='text-sm text-gray-600'>Razorpay order and verification APIs are wired for INR checkout.</p></div>}

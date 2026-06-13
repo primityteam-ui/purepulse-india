@@ -1,0 +1,2 @@
+import {razorpay} from '@/lib/razorpay'
+export async function POST(request){try{if(!razorpay)return Response.json({error:'Razorpay keys missing'},{status:500});const {amountINR,orderData}=await request.json();const order=await razorpay.orders.create({amount:Math.round(Number(amountINR)*100),currency:'INR',notes:orderData||{}});return Response.json({orderId:order.id,amount:order.amount})}catch(e){return Response.json({error:e.message},{status:400})}}

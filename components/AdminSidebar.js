@@ -1,0 +1,2 @@
+import Link from 'next/link'
+export default function AdminSidebar(){return <aside className='card p-5 h-fit'><h2 className='font-bold text-xl'>Admin</h2>{[['/admin','Dashboard'],['/admin/products','Products'],['/admin/orders','Orders'],['/admin/negotiations','Negotiations'],['/admin/settings','Settings']].map(([href,label])=><Link className='block py-2' href={href} key={href}>{label}</Link>)}</aside>}

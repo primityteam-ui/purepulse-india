@@ -1,0 +1,2 @@
+import crypto from 'crypto'
+export async function POST(request){try{const {razorpay_order_id,razorpay_payment_id,razorpay_signature}=await request.json();const h=crypto.createHmac('sha256',process.env.RAZORPAY_KEY_SECRET);h.update(`${razorpay_order_id}|${razorpay_payment_id}`);const ok=h.digest('hex')===razorpay_signature;return Response.json({verified:ok},{status:ok?200:400})}catch(e){return Response.json({error:e.message},{status:400})}}

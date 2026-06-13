@@ -1,0 +1,1 @@
+export async function GET(request){try{const forwarded=request.headers.get('x-forwarded-for');const ip=forwarded?.split(',')[0]||'8.8.8.8';const r=await fetch(`https://ipapi.co/${ip}/json/`,{next:{revalidate:3600}});const d=await r.json();return Response.json({countryCode:d.country_code||'US'})}catch(e){return Response.json({countryCode:'US'})}}
