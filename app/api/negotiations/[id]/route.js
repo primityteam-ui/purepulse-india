@@ -81,10 +81,10 @@ export async function PUT(request, { params }) {
 
     let emailResult = {
       sent: false,
-      reason: 'No new admin response was added.'
+      reason: 'Message to customer is empty.'
     }
 
-    if (shouldAddHistory) {
+    if (newReply.trim()) {
       emailResult = await sendNegotiationEmail({
         to: negotiation.customerEmail,
         customerName: negotiation.customerName,
