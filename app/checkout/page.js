@@ -1,413 +1,326 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useMemo, useState } from 'react'
 import { useCart } from '@/hooks/useCart'
 import { useCurrency } from '@/hooks/useCurrency'
+import StripeCheckout from '@/components/StripeCheckout'
+import RazorpayCheckout from '@/components/RazorpayCheckout'
 
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') {
-      resolve(false)
-      return
-    }
+const INDIA_NAMES = ['india', 'in', 'bharat']
 
-    if (window.Razorpay) {
-      resolve(true)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.body.appendChild(script)
-  })
+function isIndiaCountry(country) {
+  return INDIA_NAMES.includes(String(country || '').trim().toLowerCase())
 }
 
-export default function CheckoutPage() {
-  const router = useRouter()
-  const { cartItems, getCartTotal, clearCart } = useCart()
-  const { currency, formatPrice } = useCurrency()
+function getItemWeightKg(item) {
+  const variant = String(item.variant || '').toLowerCase()
+  const quantity = Number(item.quantity || 1)
 
-  const [paymentCancelled, setPaymentCancelled] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [paymentMode, setPaymentMode] = useState('stripe')
-  const [message, setMessage] = useState('')
+  if (variant.includes('500g')) return 0.5 * quantity
+
+  const kgMatch = variant.match(/(\d+(\.\d+)?)\s*kg/)
+  if (kgMatch) return Number(kgMatch[1]) * quantity
+
+  return quantity
+}
+
+function calculateShippingAndTax({ subtotalUSD, totalKg, country }) {
+  const indiaOrder = isIndiaCountry(country)
+
+  if (indiaOrder) {
+    const domesticShippingUSD = subtotalUSD >= 60 ? 0 : Math.max(3.5, totalKg * 0.45)
+    const gstUSD = subtotalUSD * 0.05
+
+    return {
+      shippingType: 'India Domestic',
+      shippingUSD: Number(domesticShippingUSD.toFixed(2)),
+      taxUSD: Number(gstUSD.toFixed(2)),
+      customsNote:
+        'Estimated domestic GST is shown for demo purposes. Final GST and invoice rules should be confirmed by the store owner or accountant.',
+      buyerResponsibilityNote: ''
+    }
+  }
+
+  const internationalShippingUSD = 18 + totalKg * 4.5
+
+  return {
+    shippingType: 'International Export',
+    shippingUSD: Number(internationalShippingUSD.toFixed(2)),
+    taxUSD: 0,
+    customsNote:
+      'For international orders, customs duty, import VAT, clearance charges, or local taxes may be charged by the destination country.',
+    buyerResponsibilityNote:
+      'These destination-country charges are usually the buyer’s responsibility unless the seller and buyer agree otherwise.'
+  }
+}
+
+export default function Checkout() {
+  const cartContext = useCart() || {}
+  const currencyContext = useCurrency() || {}
+
+  const cartItems = Array.isArray(cartContext.cart) ? cartContext.cart : []
+
+  const currencyCode = currencyContext?.currency?.code || 'USD'
+
+  const formatPrice =
+    typeof currencyContext.formatPrice === 'function'
+      ? currencyContext.formatPrice
+      : (amount) => `$${Number(amount || 0).toFixed(2)}`
 
   const [form, setForm] = useState({
     customerName: '',
     customerEmail: '',
     customerPhone: '',
+    customerCountry: '',
     line1: '',
-    line2: '',
     city: '',
     state: '',
     postalCode: '',
     country: ''
   })
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setPaymentCancelled(params.get('cancelled') === 'true')
-  }, [])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  function updateField(name, value) {
-    setForm((current) => ({ ...current, [name]: value }))
-  }
+  const subtotalUSD = useMemo(() => {
+    if (typeof cartContext.getCartTotal === 'function') {
+      return Number(cartContext.getCartTotal() || 0)
+    }
 
-  function buildOrderPayload(paymentMethod = 'pending') {
-    const subtotalUSD = getCartTotal()
-    const paidCurrency = paymentMethod === 'razorpay' ? 'INR' : currency.code
-    const paidTotal =
-      paymentMethod === 'manual'
-        ? 0
-        : subtotalUSD * Number(currency.rate || 1)
+    return cartItems.reduce((sum, item) => {
+      return sum + Number(item.priceUSD || 0) * Number(item.quantity || 1)
+    }, 0)
+  }, [cartContext, cartItems])
 
-    return {
-      customerName: form.customerName,
-      customerEmail: form.customerEmail,
-      customerPhone: form.customerPhone,
-      customerCountry: form.country,
-      customerAddress: {
-        line1: form.line1,
-        line2: form.line2,
-        city: form.city,
-        state: form.state,
-        postalCode: form.postalCode,
-        country: form.country
-      },
-      items: cartItems.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        variant: item.variant,
-        quantity: Number(item.quantity || 1),
-        priceUSD: Number(item.priceUSD || 0),
-        pricePaid: Number(item.priceUSD || 0) * Number(currency.rate || 1),
-        currencyPaid: paidCurrency
-      })),
+  const totalKg = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + getItemWeightKg(item), 0)
+  }, [cartItems])
+
+  const estimate = useMemo(() => {
+    return calculateShippingAndTax({
       subtotalUSD,
-      totalUSD: subtotalUSD,
-      totalPaid: paidTotal,
-      currencyPaid: paidCurrency,
-      paymentMethod,
-      paymentStatus: 'pending',
-      orderStatus: 'processing',
-      notes:
-        paymentMethod === 'manual'
-          ? 'Customer requested invoice / bank transfer / offline payment follow-up.'
-          : paymentMethod === 'razorpay'
-            ? 'Customer selected India payment through Razorpay.'
-            : 'Customer selected international card payment through Stripe.'
-    }
+      totalKg,
+      country: form.country || form.customerCountry
+    })
+  }, [subtotalUSD, totalKg, form.country, form.customerCountry])
+
+  const totalUSD = Number((subtotalUSD + estimate.shippingUSD + estimate.taxUSD).toFixed(2))
+
+  function updateField(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function createOrder(paymentMethod) {
-    const payload = buildOrderPayload(paymentMethod)
+  async function createOrder() {
+    setError('')
 
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    const data = await response.json()
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Could not create order.')
-    }
-
-    return data.order
-  }
-
-  async function payWithStripe(order) {
-    const stripeResponse = await fetch('/api/payments/stripe/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId: order._id })
-    })
-
-    const stripeData = await stripeResponse.json()
-
-    if (!stripeResponse.ok || !stripeData.success || !stripeData.url) {
-      clearCart()
-      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+    if (!cartItems.length) {
+      setError('Your cart is empty.')
       return
     }
 
-    clearCart()
-    window.location.href = stripeData.url
-  }
-
-  async function payWithRazorpay(order) {
-    const scriptLoaded = await loadRazorpayScript()
-
-    if (!scriptLoaded) {
-      clearCart()
-      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
-      return
-    }
-
-    const amountINR = Number(order.totalPaid || order.totalUSD || 0)
-
-    const razorpayResponse = await fetch('/api/payments/razorpay/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: order._id,
-        amountINR
-      })
-    })
-
-    const razorpayData = await razorpayResponse.json()
-
-    if (!razorpayResponse.ok || !razorpayData.success) {
-      clearCart()
-      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
-      return
-    }
-
-    const options = {
-      key: razorpayData.keyId,
-      amount: razorpayData.amount,
-      currency: razorpayData.currency,
-      name: 'Farm Origin',
-      description: `Order ${order.orderNumber}`,
-      order_id: razorpayData.razorpayOrderId,
-      prefill: {
-        name: form.customerName,
-        email: form.customerEmail,
-        contact: form.customerPhone
-      },
-      notes: {
-        appOrderId: order._id,
-        orderNumber: order.orderNumber
-      },
-      handler: async function (response) {
-        const verifyResponse = await fetch('/api/payments/razorpay/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            appOrderId: order._id,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
-          })
-        })
-
-        const verifyData = await verifyResponse.json()
-
-        clearCart()
-
-        if (verifyResponse.ok && verifyData.success) {
-          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&paid=success`)
-        } else {
-          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
-        }
-      },
-      modal: {
-        ondismiss: function () {
-          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
-        }
-      },
-      theme: {
-        color: '#166534'
-      }
-    }
-
-    const razorpay = new window.Razorpay(options)
-    razorpay.open()
-  }
-
-  async function submitOrder(event) {
-    event.preventDefault()
-    setMessage('')
-
-    if (cartItems.length === 0) {
-      setMessage('Your cart is empty. Please add products before checkout.')
+    if (!form.customerName || !form.customerEmail || !form.country || !form.line1 || !form.city || !form.postalCode) {
+      setError('Please fill customer name, email, address, city, postal code, and delivery country.')
       return
     }
 
     setLoading(true)
 
     try {
-      if (paymentMode === 'manual') {
-        const order = await createOrder('manual')
-        clearCart()
-        router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=manual`)
-        return
+      const body = {
+        customerName: form.customerName,
+        customerEmail: form.customerEmail,
+        customerPhone: form.customerPhone,
+        customerCountry: form.country,
+        customerAddress: {
+          line1: form.line1,
+          city: form.city,
+          state: form.state,
+          postalCode: form.postalCode,
+          country: form.country
+        },
+        items: cartItems,
+
+        subtotalUSD,
+        shippingUSD: estimate.shippingUSD,
+        taxUSD: estimate.taxUSD,
+        totalUSD,
+
+        currencyPaid: currencyCode,
+        shippingType: estimate.shippingType,
+        totalWeightKg: totalKg,
+        customsNote: estimate.customsNote,
+        buyerResponsibilityNote: estimate.buyerResponsibilityNote,
+
+        paymentMethod: currencyCode === 'INR' ? 'razorpay' : 'stripe',
+        paymentStatus: 'pending',
+        orderStatus: 'processing'
       }
 
-      if (paymentMode === 'razorpay') {
-        const order = await createOrder('razorpay')
-        await payWithRazorpay(order)
-        return
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Unable to create order.')
       }
 
-      const order = await createOrder('stripe')
-      await payWithStripe(order)
-    } catch (error) {
-      setMessage(error.message || 'Checkout failed. Please try again.')
+      if (typeof cartContext.clearCart === 'function') {
+        cartContext.clearCart()
+      }
+
+      window.location.href = `/order-confirmation?order=${data.orderNumber}`
+    } catch (err) {
+      setError(err.message || 'Unable to create order.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section className="section-padding">
-      <div className="container-premium">
-        <div className="mb-10">
-          <div className="badge-premium mb-4">Secure checkout</div>
-          <h1 className="text-5xl font-black text-green-950">Complete your order</h1>
-          <p className="mt-4 max-w-3xl text-lg leading-8 text-green-950/60">
-            Farm Origin supports international card payments, India UPI/card payments, and manual invoice requests for export and wholesale orders.
+    <main className="min-h-screen bg-[#f8f5ec]">
+      <section className="bg-emerald-950 px-4 py-16 text-white">
+        <div className="container-premium">
+          <p className="badge-premium bg-white/10 text-amber-200 border-amber-300/40">
+            Secure Checkout
+          </p>
+          <h1 className="mt-5 max-w-3xl text-5xl font-black tracking-tight md:text-6xl">
+            Checkout with shipping and tax estimate.
+          </h1>
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-emerald-50">
+            Delivery charges are estimated based on country and order weight. International customs or import taxes may be charged by the destination country.
           </p>
         </div>
+      </section>
 
-        {paymentCancelled && (
-          <div className="mb-6 rounded-3xl bg-yellow-50 p-5 font-bold text-yellow-900">
-            Payment was cancelled. You can review your cart and try again.
-          </div>
-        )}
+      <section className="container-premium py-12">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="card-premium p-6 md:p-8">
+            <h2 className="text-3xl font-black text-emerald-950">
+              Delivery Details
+            </h2>
 
-        {message && (
-          <div className="mb-6 rounded-3xl bg-red-50 p-5 font-bold text-red-700">
-            {message}
-          </div>
-        )}
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <input className="input-premium" placeholder="Customer name" value={form.customerName} onChange={(e) => updateField('customerName', e.target.value)} />
+              <input className="input-premium" type="email" placeholder="Customer email" value={form.customerEmail} onChange={(e) => updateField('customerEmail', e.target.value)} />
+              <input className="input-premium" placeholder="Phone number" value={form.customerPhone} onChange={(e) => updateField('customerPhone', e.target.value)} />
+              <input className="input-premium" placeholder="Delivery country, e.g. India, United States" value={form.country} onChange={(e) => updateField('country', e.target.value)} />
+              <input className="input-premium md:col-span-2" placeholder="Address line" value={form.line1} onChange={(e) => updateField('line1', e.target.value)} />
+              <input className="input-premium" placeholder="City" value={form.city} onChange={(e) => updateField('city', e.target.value)} />
+              <input className="input-premium" placeholder="State / Province" value={form.state} onChange={(e) => updateField('state', e.target.value)} />
+              <input className="input-premium" placeholder="Postal / ZIP code" value={form.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} />
+            </div>
 
-        {cartItems.length === 0 ? (
-          <div className="card-premium p-12 text-center">
-            <div className="text-6xl">🛒</div>
-            <h2 className="mt-5 text-3xl font-black text-green-950">Your cart is empty</h2>
-            <p className="mt-3 text-green-950/60">Add products before checkout.</p>
-            <Link href="/shop" className="btn-primary mt-7">Shop Products</Link>
-          </div>
-        ) : (
-          <div className="grid gap-8 lg:grid-cols-[1fr_390px]">
-            <form onSubmit={submitOrder} className="card-premium p-6 md:p-8">
-              <h2 className="mb-5 text-2xl font-black text-green-950">Customer details</h2>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <input className="input-premium" placeholder="Full name" value={form.customerName} onChange={(e) => updateField('customerName', e.target.value)} required />
-                <input className="input-premium" type="email" placeholder="Email" value={form.customerEmail} onChange={(e) => updateField('customerEmail', e.target.value)} required />
-                <input className="input-premium" placeholder="Phone / WhatsApp" value={form.customerPhone} onChange={(e) => updateField('customerPhone', e.target.value)} required />
-                <input className="input-premium" placeholder="Country" value={form.country} onChange={(e) => updateField('country', e.target.value)} required />
+            {error && (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
+                {error}
               </div>
+            )}
 
-              <h2 className="mb-5 mt-8 text-2xl font-black text-green-950">Shipping address</h2>
+            <button
+              type="button"
+              onClick={createOrder}
+              disabled={loading}
+              className="btn-primary mt-6 w-full justify-center disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Creating Order...' : 'Create Order with Estimate'}
+            </button>
 
-              <div className="grid gap-4">
-                <input className="input-premium" placeholder="Address line 1" value={form.line1} onChange={(e) => updateField('line1', e.target.value)} required />
-                <input className="input-premium" placeholder="Address line 2" value={form.line2} onChange={(e) => updateField('line2', e.target.value)} />
-                <div className="grid gap-4 md:grid-cols-3">
-                  <input className="input-premium" placeholder="City" value={form.city} onChange={(e) => updateField('city', e.target.value)} required />
-                  <input className="input-premium" placeholder="State / Province" value={form.state} onChange={(e) => updateField('state', e.target.value)} required />
-                  <input className="input-premium" placeholder="Postal code" value={form.postalCode} onChange={(e) => updateField('postalCode', e.target.value)} required />
-                </div>
-              </div>
+            <p className="mt-4 text-center text-xs leading-6 text-stone-500">
+              This demo creates a pending order. Final live payment collection should be enabled only after confirming shipping, tax, and export settings with the store owner.
+            </p>
+          </div>
 
-              <h2 className="mb-5 mt-8 text-2xl font-black text-green-950">Payment option</h2>
+          <aside className="space-y-5">
+            <div className="card-premium p-6">
+              <h2 className="text-2xl font-black text-emerald-950">
+                Order Summary
+              </h2>
 
-              <div className="grid gap-4">
-                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'stripe' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
-                  <input
-                    type="radio"
-                    name="paymentMode"
-                    value="stripe"
-                    checked={paymentMode === 'stripe'}
-                    onChange={() => setPaymentMode('stripe')}
-                    className="mr-2"
-                  />
-                  <span className="font-black text-green-950">International card payment</span>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
-                    Accept international debit cards, credit cards, and supported Stripe payment methods when the client connects a Stripe merchant account.
-                  </p>
-                </label>
-
-                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'razorpay' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
-                  <input
-                    type="radio"
-                    name="paymentMode"
-                    value="razorpay"
-                    checked={paymentMode === 'razorpay'}
-                    onChange={() => setPaymentMode('razorpay')}
-                    className="mr-2"
-                  />
-                  <span className="font-black text-green-950">India UPI / PhonePe / cards</span>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
-                    Accept UPI apps including PhonePe, debit cards, credit cards, net banking, and wallets through Razorpay after the client connects Razorpay live keys.
-                  </p>
-                </label>
-
-                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'manual' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
-                  <input
-                    type="radio"
-                    name="paymentMode"
-                    value="manual"
-                    checked={paymentMode === 'manual'}
-                    onChange={() => setPaymentMode('manual')}
-                    className="mr-2"
-                  />
-                  <span className="font-black text-green-950">Request invoice / bank transfer</span>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
-                    Best for wholesale, export orders, large quantity deals, bank transfer, shipping quotes, and manual payment confirmation.
-                  </p>
-                </label>
-              </div>
-
-              <button disabled={loading} className="btn-primary mt-8 w-full disabled:cursor-not-allowed disabled:opacity-60">
-                {loading
-                  ? 'Processing...'
-                  : paymentMode === 'manual'
-                    ? 'Submit Order Request'
-                    : paymentMode === 'razorpay'
-                      ? 'Pay with UPI / PhonePe / Cards'
-                      : 'Pay with International Card'}
-              </button>
-            </form>
-
-            <aside className="card-premium h-fit p-6">
-              <h2 className="text-2xl font-black text-green-950">Order summary</h2>
-
-              <div className="mt-6 space-y-4">
-                {cartItems.map((item) => (
-                  <div key={`${item.productId}-${item.variant}`} className="flex justify-between gap-4 border-b border-green-900/10 pb-4">
-                    <div>
-                      <div className="font-black text-green-950">{item.productName}</div>
-                      <div className="text-sm font-bold text-green-950/45">{item.variant} × {item.quantity}</div>
+              <div className="mt-5 space-y-3">
+                {cartItems.length ? (
+                  cartItems.map((item, index) => (
+                    <div key={`${item.productId || index}-${item.variant || index}`} className="flex justify-between gap-4 rounded-2xl bg-white/70 p-3 text-sm">
+                      <div>
+                        <p className="font-bold text-emerald-950">{item.productName}</p>
+                        <p className="text-stone-500">{item.variant} × {item.quantity}</p>
+                      </div>
+                      <p className="font-bold text-emerald-950">
+                        {formatPrice(Number(item.priceUSD || 0) * Number(item.quantity || 1))}
+                      </p>
                     </div>
-                    <div className="font-black text-green-950">{formatPrice(item.priceUSD * item.quantity)}</div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-stone-500">Your cart is empty.</p>
+                )}
               </div>
 
-              <div className="mt-6 space-y-3">
-                <div className="flex justify-between text-green-950/65">
-                  <span>Subtotal</span>
-                  <strong className="text-green-950">{formatPrice(getCartTotal())}</strong>
+              <div className="mt-6 space-y-3 border-t border-emerald-100 pt-5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-stone-600">Product subtotal</span>
+                  <strong>{formatPrice(subtotalUSD)}</strong>
                 </div>
-                <div className="flex justify-between text-green-950/65">
-                  <span>Shipping</span>
-                  <strong className="text-green-950">Confirmed after address</strong>
-                </div>
-              </div>
 
-              <div className="mt-6 border-t border-green-900/10 pt-6">
-                <div className="flex justify-between text-xl">
-                  <span className="font-black text-green-950">Total</span>
-                  <strong className="text-green-950">{formatPrice(getCartTotal())}</strong>
+                <div className="flex justify-between">
+                  <span className="text-stone-600">Estimated weight</span>
+                  <strong>{totalKg.toFixed(2)} kg</strong>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-stone-600">Shipping type</span>
+                  <strong>{estimate.shippingType}</strong>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-stone-600">Estimated shipping</span>
+                  <strong>{formatPrice(estimate.shippingUSD)}</strong>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-stone-600">
+                    {estimate.shippingType === 'India Domestic' ? 'Estimated GST' : 'Customs charged now'}
+                  </span>
+                  <strong>{formatPrice(estimate.taxUSD)}</strong>
+                </div>
+
+                <div className="flex justify-between border-t border-emerald-100 pt-4 text-lg">
+                  <span className="font-black text-emerald-950">Estimated total</span>
+                  <strong className="text-emerald-950">{formatPrice(totalUSD)}</strong>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-6 rounded-3xl bg-green-50 p-5 text-sm font-semibold leading-6 text-green-950/65">
-                Orders are saved in the admin dashboard immediately. Online payments are marked paid after payment gateway confirmation.
+            <div className="card-premium p-6">
+              <h3 className="text-xl font-black text-emerald-950">
+                Tax & Customs Notice
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-stone-600">
+                {estimate.customsNote}
+              </p>
+              {estimate.buyerResponsibilityNote && (
+                <p className="mt-3 text-sm leading-7 text-stone-600">
+                  {estimate.buyerResponsibilityNote}
+                </p>
+              )}
+            </div>
+
+            <div className="card-premium p-6">
+              <h3 className="text-xl font-black text-emerald-950">
+                Payment Preview
+              </h3>
+              <div className="mt-4">
+                {currencyCode === 'INR' ? <RazorpayCheckout /> : <StripeCheckout />}
               </div>
-            </aside>
-          </div>
-        )}
-      </div>
-    </section>
+              <p className="mt-4 text-xs leading-6 text-stone-500">
+                Payment gateway buttons are preview components. Final payment setup needs real Stripe/Razorpay keys and test transactions.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
   )
 }
