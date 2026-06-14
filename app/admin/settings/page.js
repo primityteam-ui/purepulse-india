@@ -219,7 +219,7 @@ export default function AdminSettingsPage() {
                     <input
                       className="input-premium"
                       type="email"
-                      placeholder="sales@purepulseindia.com"
+                      placeholder="sales@farmorigin.com"
                       value={settings.businessEmail}
                       onChange={(e) => updateField('businessEmail', e.target.value)}
                     />

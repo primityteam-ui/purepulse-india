@@ -24,13 +24,13 @@ export default function ContactPage() {
     loadSettings()
   }, [])
 
-  const email = settings?.businessEmail || 'sales@purepulseindia.com'
+  const email = settings?.businessEmail || 'sales@farmorigin.com'
   const whatsappNumber = settings?.whatsappNumber || '91XXXXXXXXXX'
 
   const whatsappLink = useMemo(() => {
     const number = String(whatsappNumber).replace(/\D/g, '')
     if (!number) return '#'
-    return `https://wa.me/${number}?text=${encodeURIComponent('Hello PurePulse India, I want to ask about your products.')}`
+    return `https://wa.me/${number}?text=${encodeURIComponent('Hello Farm Origin, I want to ask about your products.')}`
   }, [whatsappNumber])
 
   function updateField(name, value) {
@@ -63,7 +63,7 @@ export default function ContactPage() {
         <div className="container-premium">
           <div className="badge-premium mb-5 bg-white/10 text-[#f1cf75]">Contact</div>
           <h1 className="max-w-4xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
-            Talk to PurePulse India.
+            Talk to Farm Origin.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-white/70">
             Ask about products, orders, shipping, wholesale, or export requirements.

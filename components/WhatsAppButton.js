@@ -28,7 +28,7 @@ export default function WhatsAppButton() {
     if (!number) return null
 
     const message = encodeURIComponent(
-      'Hello PurePulse India, I am interested in your organic pulses and lentils.'
+      'Hello Farm Origin, I am interested in your organic pulses and lentils.'
     )
 
     return `https://wa.me/${number}?text=${message}`

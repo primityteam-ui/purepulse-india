@@ -140,7 +140,7 @@ function createSvg(product) {
 
   <text x="450" y="505" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="900" fill="#0B3D2B">${product.title}</text>
   <text x="450" y="553" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#1F6B4A">${product.subtitle}</text>
-  <text x="450" y="594" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="800" fill="#8A641F">PurePulse India • Organic • Lab Tested</text>
+  <text x="450" y="594" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="800" fill="#8A641F">Farm Origin • Organic • Lab Tested</text>
 
   <defs>
     <clipPath id="clip">

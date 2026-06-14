@@ -1,4 +1,4 @@
-# PurePulse India
+# Farm Origin
 
 Complete Next.js 14 full-stack e-commerce starter for selling Indian organic pulses and lentils globally.
 

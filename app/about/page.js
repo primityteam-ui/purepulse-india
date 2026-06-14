@@ -10,7 +10,7 @@ export default function AboutPage() {
             Indian pulses deserve a premium global brand.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-white/70">
-            PurePulse India is built around a simple idea: make Indian organic lentils, dals, chickpeas, and beans feel as premium and trustworthy as any global health-food brand.
+            Farm Origin is built around a simple idea: make Indian organic lentils, dals, chickpeas, and beans feel as premium and trustworthy as any global health-food brand.
           </p>
         </div>
       </section>
@@ -41,7 +41,7 @@ export default function AboutPage() {
           <div className="card-premium p-8 md:p-10">
             <h2 className="text-3xl font-black text-green-950">Why this brand can work</h2>
             <p className="mt-4 leading-8 text-green-950/65">
-              Indian pulses are already loved worldwide, but many sellers look outdated online. PurePulse India is designed to look modern, premium, and easy to buy from.
+              Indian pulses are already loved worldwide, but many sellers look outdated online. Farm Origin is designed to look modern, premium, and easy to buy from.
             </p>
           </div>
         </div>

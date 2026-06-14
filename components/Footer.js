@@ -24,7 +24,7 @@ export default function Footer() {
   }, [])
 
   const whatsappDisplay = settings?.whatsappNumber || '91XXXXXXXXXX'
-  const email = settings?.businessEmail || 'sales@purepulseindia.com'
+  const email = settings?.businessEmail || 'sales@farmorigin.com'
 
   const whatsappLink = useMemo(() => {
     const number = String(whatsappDisplay).replace(/\D/g, '')
@@ -42,7 +42,7 @@ export default function Footer() {
                 PP
               </div>
               <div>
-                <div className="text-xl font-black">PurePulse India</div>
+                <div className="text-xl font-black">Farm Origin</div>
                 <div className="text-sm text-white/60">Organic Indian pulses worldwide</div>
               </div>
             </div>
@@ -85,7 +85,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-6 text-sm text-white/50">
-          © {new Date().getFullYear()} PurePulse India. All rights reserved.
+          © {new Date().getFullYear()} Farm Origin. All rights reserved.
         </div>
       </div>
     </footer>

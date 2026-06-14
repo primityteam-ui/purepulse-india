@@ -60,7 +60,7 @@ export default function NegotiationChat({ product, onClose }) {
         </div>
 
         <div className="mb-6 rounded-3xl bg-green-950 p-5 text-white">
-          <div className="text-sm font-bold text-white/60">PurePulse Bot</div>
+          <div className="text-sm font-bold text-white/60">Farm Origin Bot</div>
           <p className="mt-2 leading-7">
             Welcome. Share your bulk quantity and offer price. We will respond with an accepted deal or a counter price.
           </p>
@@ -86,7 +86,7 @@ export default function NegotiationChat({ product, onClose }) {
 
         {reply && (
           <div className="mt-6 rounded-3xl bg-[#fff7df] p-5 text-green-950">
-            <div className="text-sm font-black text-green-900/55">PurePulse Bot Reply</div>
+            <div className="text-sm font-black text-green-900/55">Farm Origin Bot Reply</div>
             <p className="mt-2 leading-7 font-semibold">{reply}</p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <button className="btn-primary flex-1">Accept Deal</button>

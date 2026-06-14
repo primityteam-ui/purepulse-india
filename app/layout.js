@@ -7,7 +7,7 @@ import WhatsAppButton from '@/components/WhatsAppButton'
 import MaintenanceGate from '@/components/MaintenanceGate'
 
 export const metadata = {
-  title: 'PurePulse India | Organic Indian Pulses & Lentils',
+  title: 'Farm Origin | Organic Indian Pulses & Lentils',
   description: 'Premium organic Indian pulses, lentils, chickpeas, beans, and bulk exports delivered worldwide.'
 }
 

@@ -33,7 +33,7 @@ function download(url, destination) {
       url,
       {
         headers: {
-          'User-Agent': 'PurePulseIndia/1.0 (local development; contact: sales@purepulseindia.com)',
+          'User-Agent': 'Farm OriginIndia/1.0 (local development; contact: sales@farmorigin.com)',
           'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
         }
       },

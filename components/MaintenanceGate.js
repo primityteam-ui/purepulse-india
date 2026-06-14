@@ -46,7 +46,7 @@ export default function MaintenanceGate({ children }) {
             </div>
 
             <h1 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
-              PurePulse India is being updated.
+              Farm Origin is being updated.
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/70">

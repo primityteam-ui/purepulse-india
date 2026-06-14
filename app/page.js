@@ -87,7 +87,7 @@ export default async function HomePage() {
             <div className="badge-premium mb-5">Our story</div>
             <h2 className="text-4xl font-black text-green-950">Indian staples, global standard.</h2>
             <p className="mt-4 text-lg leading-8 text-green-950/62">
-              PurePulse India was created to make premium Indian pulses feel modern, trustworthy, and easy to buy for families and businesses around the world.
+              Farm Origin was created to make premium Indian pulses feel modern, trustworthy, and easy to buy for families and businesses around the world.
             </p>
             <Link href="/about" className="btn-secondary mt-7">
               Read Our Story

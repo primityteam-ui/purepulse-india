@@ -43,7 +43,7 @@ function AdminLoginForm() {
       <div className="w-full max-w-md rounded-[2rem] bg-white border border-emerald-100 shadow-xl p-8">
         <div className="text-center mb-8">
           <p className="text-sm font-semibold tracking-[0.25em] uppercase text-emerald-700">
-            PurePulse India
+            Farm Origin
           </p>
           <h1 className="mt-3 text-3xl font-bold text-stone-900">
             Admin Login
@@ -63,7 +63,7 @@ function AdminLoginForm() {
               className="input-premium w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@purepulseindia.com"
+              placeholder="admin@farmorigin.com"
               required
             />
           </div>
@@ -98,7 +98,7 @@ function AdminLoginForm() {
         </form>
 
         <p className="mt-6 text-center text-xs text-stone-500">
-          Protected owner dashboard for PurePulse India.
+          Protected owner dashboard for Farm Origin.
         </p>
       </div>
     </div>

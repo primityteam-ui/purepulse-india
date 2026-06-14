@@ -20,7 +20,7 @@ export default function HeroSection() {
           </h1>
 
           <p className="mt-7 max-w-2xl text-lg leading-8 text-white/72">
-            PurePulse India brings premium organic dals, chickpeas, beans, peas, and rare superfood pulses from trusted Indian farms to homes, restaurants, retailers, and wholesale buyers worldwide.
+            Farm Origin brings premium organic dals, chickpeas, beans, peas, and rare superfood pulses from trusted Indian farms to homes, restaurants, retailers, and wholesale buyers worldwide.
           </p>
 
           <div className="mt-9 flex flex-col gap-4 sm:flex-row">

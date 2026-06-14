@@ -30,7 +30,7 @@ export async function POST(request) {
     }
 
     const upload = await cloudinary.uploader.upload(image, {
-      folder: 'purepulse-products',
+      folder: 'farmorigin-products',
       resource_type: 'image',
       transformation: [
         { width: 1200, height: 900, crop: 'fill', quality: 'auto', fetch_format: 'auto' }

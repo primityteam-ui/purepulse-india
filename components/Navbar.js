@@ -26,7 +26,7 @@ export default function Navbar() {
             PP
           </div>
           <div>
-            <div className="text-lg font-black tracking-tight text-green-950">PurePulse India</div>
+            <div className="text-lg font-black tracking-tight text-green-950">Farm Origin</div>
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-green-800/70">
               Organic exports
             </div>
