@@ -6,20 +6,34 @@ import Link from 'next/link'
 import { useCart } from '@/hooks/useCart'
 import { useCurrency } from '@/hooks/useCurrency'
 
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(false)
+      return
+    }
+
+    if (window.Razorpay) {
+      resolve(true)
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
-  const [paymentCancelled, setPaymentCancelled] = useState(false)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setPaymentCancelled(params.get('cancelled') === 'true')
-  }, [])
-
   const { cartItems, getCartTotal, clearCart } = useCart()
   const { currency, formatPrice } = useCurrency()
 
+  const [paymentCancelled, setPaymentCancelled] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [paymentMode, setPaymentMode] = useState('online')
+  const [paymentMode, setPaymentMode] = useState('stripe')
   const [message, setMessage] = useState('')
 
   const [form, setForm] = useState({
@@ -34,12 +48,22 @@ export default function CheckoutPage() {
     country: ''
   })
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setPaymentCancelled(params.get('cancelled') === 'true')
+  }, [])
+
   function updateField(name, value) {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
   function buildOrderPayload(paymentMethod = 'pending') {
     const subtotalUSD = getCartTotal()
+    const paidCurrency = paymentMethod === 'razorpay' ? 'INR' : currency.code
+    const paidTotal =
+      paymentMethod === 'manual'
+        ? 0
+        : subtotalUSD * Number(currency.rate || 1)
 
     return {
       customerName: form.customerName,
@@ -61,19 +85,21 @@ export default function CheckoutPage() {
         quantity: Number(item.quantity || 1),
         priceUSD: Number(item.priceUSD || 0),
         pricePaid: Number(item.priceUSD || 0) * Number(currency.rate || 1),
-        currencyPaid: currency.code
+        currencyPaid: paidCurrency
       })),
       subtotalUSD,
       totalUSD: subtotalUSD,
-      totalPaid: paymentMethod === 'manual' ? 0 : subtotalUSD * Number(currency.rate || 1),
-      currencyPaid: currency.code,
+      totalPaid: paidTotal,
+      currencyPaid: paidCurrency,
       paymentMethod,
       paymentStatus: 'pending',
       orderStatus: 'processing',
       notes:
         paymentMethod === 'manual'
-          ? 'Customer requested manual invoice / offline payment follow-up.'
-          : 'Customer selected online payment.'
+          ? 'Customer requested invoice / bank transfer / offline payment follow-up.'
+          : paymentMethod === 'razorpay'
+            ? 'Customer selected India payment through Razorpay.'
+            : 'Customer selected international card payment through Stripe.'
     }
   }
 
@@ -95,6 +121,105 @@ export default function CheckoutPage() {
     return data.order
   }
 
+  async function payWithStripe(order) {
+    const stripeResponse = await fetch('/api/payments/stripe/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: order._id })
+    })
+
+    const stripeData = await stripeResponse.json()
+
+    if (!stripeResponse.ok || !stripeData.success || !stripeData.url) {
+      clearCart()
+      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+      return
+    }
+
+    clearCart()
+    window.location.href = stripeData.url
+  }
+
+  async function payWithRazorpay(order) {
+    const scriptLoaded = await loadRazorpayScript()
+
+    if (!scriptLoaded) {
+      clearCart()
+      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+      return
+    }
+
+    const amountINR = Number(order.totalPaid || order.totalUSD || 0)
+
+    const razorpayResponse = await fetch('/api/payments/razorpay/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: order._id,
+        amountINR
+      })
+    })
+
+    const razorpayData = await razorpayResponse.json()
+
+    if (!razorpayResponse.ok || !razorpayData.success) {
+      clearCart()
+      router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+      return
+    }
+
+    const options = {
+      key: razorpayData.keyId,
+      amount: razorpayData.amount,
+      currency: razorpayData.currency,
+      name: 'Farm Origin',
+      description: `Order ${order.orderNumber}`,
+      order_id: razorpayData.razorpayOrderId,
+      prefill: {
+        name: form.customerName,
+        email: form.customerEmail,
+        contact: form.customerPhone
+      },
+      notes: {
+        appOrderId: order._id,
+        orderNumber: order.orderNumber
+      },
+      handler: async function (response) {
+        const verifyResponse = await fetch('/api/payments/razorpay/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appOrderId: order._id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          })
+        })
+
+        const verifyData = await verifyResponse.json()
+
+        clearCart()
+
+        if (verifyResponse.ok && verifyData.success) {
+          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&paid=success`)
+        } else {
+          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
+        }
+      },
+      theme: {
+        color: '#166534'
+      }
+    }
+
+    const razorpay = new window.Razorpay(options)
+    razorpay.open()
+  }
+
   async function submitOrder(event) {
     event.preventDefault()
     setMessage('')
@@ -114,30 +239,14 @@ export default function CheckoutPage() {
         return
       }
 
-      const order = await createOrder(currency.code === 'INR' ? 'razorpay' : 'stripe')
-
-      if (currency.code === 'INR') {
-        clearCart()
-        router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=manual`)
+      if (paymentMode === 'razorpay') {
+        const order = await createOrder('razorpay')
+        await payWithRazorpay(order)
         return
       }
 
-      const stripeResponse = await fetch('/api/payments/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: order._id })
-      })
-
-      const stripeData = await stripeResponse.json()
-
-      if (!stripeResponse.ok || !stripeData.success || !stripeData.url) {
-        clearCart()
-        router.push(`/order-confirmation?order=${encodeURIComponent(order.orderNumber)}&payment=pending`)
-        return
-      }
-
-      clearCart()
-      window.location.href = stripeData.url
+      const order = await createOrder('stripe')
+      await payWithStripe(order)
     } catch (error) {
       setMessage(error.message || 'Checkout failed. Please try again.')
     } finally {
@@ -152,7 +261,7 @@ export default function CheckoutPage() {
           <div className="badge-premium mb-4">Secure checkout</div>
           <h1 className="text-5xl font-black text-green-950">Complete your order</h1>
           <p className="mt-4 max-w-3xl text-lg leading-8 text-green-950/60">
-            Enter your delivery details and choose how you want to continue. Online card payment is available when Stripe is configured. Manual invoice is available for export and bulk orders.
+            Farm Origin supports international card payments, India UPI/card payments, and manual invoice requests for export and wholesale orders.
           </p>
         </div>
 
@@ -201,19 +310,34 @@ export default function CheckoutPage() {
 
               <h2 className="mb-5 mt-8 text-2xl font-black text-green-950">Payment option</h2>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'online' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
+              <div className="grid gap-4">
+                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'stripe' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
                   <input
                     type="radio"
                     name="paymentMode"
-                    value="online"
-                    checked={paymentMode === 'online'}
-                    onChange={() => setPaymentMode('online')}
+                    value="stripe"
+                    checked={paymentMode === 'stripe'}
+                    onChange={() => setPaymentMode('stripe')}
                     className="mr-2"
                   />
-                  <span className="font-black text-green-950">Pay online</span>
+                  <span className="font-black text-green-950">International card payment</span>
                   <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
-                    Card payment through Stripe when payment keys are configured.
+                    Accept international debit cards, credit cards, and supported Stripe payment methods when the client connects a Stripe merchant account.
+                  </p>
+                </label>
+
+                <label className={`cursor-pointer rounded-3xl border p-5 ${paymentMode === 'razorpay' ? 'border-green-700 bg-green-50' : 'border-green-950/10 bg-white'}`}>
+                  <input
+                    type="radio"
+                    name="paymentMode"
+                    value="razorpay"
+                    checked={paymentMode === 'razorpay'}
+                    onChange={() => setPaymentMode('razorpay')}
+                    className="mr-2"
+                  />
+                  <span className="font-black text-green-950">India UPI / PhonePe / cards</span>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
+                    Accept UPI apps including PhonePe, debit cards, credit cards, net banking, and wallets through Razorpay after the client connects Razorpay live keys.
                   </p>
                 </label>
 
@@ -226,15 +350,21 @@ export default function CheckoutPage() {
                     onChange={() => setPaymentMode('manual')}
                     className="mr-2"
                   />
-                  <span className="font-black text-green-950">Request invoice</span>
+                  <span className="font-black text-green-950">Request invoice / bank transfer</span>
                   <p className="mt-2 text-sm font-semibold leading-6 text-green-950/60">
-                    Best for export, wholesale, bank transfer, and shipping quote confirmation.
+                    Best for wholesale, export orders, large quantity deals, bank transfer, shipping quotes, and manual payment confirmation.
                   </p>
                 </label>
               </div>
 
               <button disabled={loading} className="btn-primary mt-8 w-full disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? 'Processing...' : paymentMode === 'manual' ? 'Submit Order Request' : 'Continue to Payment'}
+                {loading
+                  ? 'Processing...'
+                  : paymentMode === 'manual'
+                    ? 'Submit Order Request'
+                    : paymentMode === 'razorpay'
+                      ? 'Pay with UPI / PhonePe / Cards'
+                      : 'Pay with International Card'}
               </button>
             </form>
 
@@ -272,7 +402,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-6 rounded-3xl bg-green-50 p-5 text-sm font-semibold leading-6 text-green-950/65">
-                Your order number will be generated after checkout. You can track your order using your order number and email.
+                Orders are saved in the admin dashboard immediately. Online payments are marked paid after payment gateway confirmation.
               </div>
             </aside>
           </div>
