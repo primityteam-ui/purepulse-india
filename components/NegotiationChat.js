@@ -22,6 +22,24 @@ export default function NegotiationChat({ product, selectedVariant, onClose }) {
     }))
   }
 
+  function getListedPriceUSD() {
+    if (!product) return 0
+
+    if (selectedVariant && product.variants?.[selectedVariant]) {
+      return Number(product.variants[selectedVariant])
+    }
+
+    if (product.basePriceUSD) {
+      return Number(product.basePriceUSD)
+    }
+
+    if (product.priceUSD) {
+      return Number(product.priceUSD)
+    }
+
+    return 0
+  }
+
   async function submitOffer(e) {
     e.preventDefault()
     setLoading(true)
@@ -29,6 +47,9 @@ export default function NegotiationChat({ product, selectedVariant, onClose }) {
     setSuccess(false)
 
     try {
+      const listedPriceUSD = getListedPriceUSD()
+      const offeredPriceUSD = Number(form.offeredPricePerKg)
+
       const res = await fetch('/api/negotiations', {
         method: 'POST',
         headers: {
@@ -38,11 +59,16 @@ export default function NegotiationChat({ product, selectedVariant, onClose }) {
           productId: product?._id,
           productName: product?.name,
           variant: selectedVariant || '1kg',
+
           customerName: form.name,
           customerEmail: form.email,
           customerCountry: form.country,
+
           quantityKg: Number(form.quantityKg),
-          offeredPricePerKg: Number(form.offeredPricePerKg)
+          offeredPricePerKg: offeredPriceUSD,
+
+          listedPriceUSD,
+          offeredPriceUSD
         })
       })
 
