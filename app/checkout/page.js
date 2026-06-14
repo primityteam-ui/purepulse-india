@@ -24,8 +24,11 @@ function getItemWeightKg(item) {
   return quantity
 }
 
-function calculateShippingAndTax({ subtotalUSD, totalKg, country }) {
-  const indiaOrder = isIndiaCountry(country)
+function calculateShippingAndTax({ subtotalUSD, totalKg, country, currencyCode }) {
+  const cleanCountry = String(country || '').trim()
+  const indiaOrder = cleanCountry
+    ? isIndiaCountry(cleanCountry)
+    : currencyCode === 'INR'
 
   if (indiaOrder) {
     const domesticShippingUSD = subtotalUSD >= 60 ? 0 : Math.max(3.5, totalKg * 0.45)
@@ -58,7 +61,13 @@ export default function Checkout() {
   const cartContext = useCart() || {}
   const currencyContext = useCurrency() || {}
 
-  const cartItems = Array.isArray(cartContext.cart) ? cartContext.cart : []
+  const cartItems = Array.isArray(cartContext.cart)
+    ? cartContext.cart
+    : Array.isArray(cartContext.items)
+      ? cartContext.items
+      : Array.isArray(cartContext.cartItems)
+        ? cartContext.cartItems
+        : []
 
   const currencyCode = currencyContext?.currency?.code || 'USD'
 
@@ -71,28 +80,32 @@ export default function Checkout() {
     customerName: '',
     customerEmail: '',
     customerPhone: '',
-    customerCountry: '',
     line1: '',
     city: '',
     state: '',
     postalCode: '',
-    country: ''
+    country: currencyCode === 'INR' ? 'India' : ''
   })
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const subtotalUSD = useMemo(() => {
+    if (cartItems.length) {
+      return cartItems.reduce((sum, item) => {
+        return sum + Number(item.priceUSD || item.price || 0) * Number(item.quantity || 1)
+      }, 0)
+    }
+
     if (typeof cartContext.getCartTotal === 'function') {
       return Number(cartContext.getCartTotal() || 0)
     }
 
-    return cartItems.reduce((sum, item) => {
-      return sum + Number(item.priceUSD || 0) * Number(item.quantity || 1)
-    }, 0)
+    return 0
   }, [cartContext, cartItems])
 
   const totalKg = useMemo(() => {
+    if (!cartItems.length) return 0
     return cartItems.reduce((sum, item) => sum + getItemWeightKg(item), 0)
   }, [cartItems])
 
@@ -100,9 +113,10 @@ export default function Checkout() {
     return calculateShippingAndTax({
       subtotalUSD,
       totalKg,
-      country: form.country || form.customerCountry
+      country: form.country,
+      currencyCode
     })
-  }, [subtotalUSD, totalKg, form.country, form.customerCountry])
+  }, [subtotalUSD, totalKg, form.country, currencyCode])
 
   const totalUSD = Number((subtotalUSD + estimate.shippingUSD + estimate.taxUSD).toFixed(2))
 
@@ -113,7 +127,7 @@ export default function Checkout() {
   async function createOrder() {
     setError('')
 
-    if (!cartItems.length) {
+    if (!cartItems.length && subtotalUSD <= 0) {
       setError('Your cart is empty.')
       return
     }
@@ -245,16 +259,18 @@ export default function Checkout() {
                   cartItems.map((item, index) => (
                     <div key={`${item.productId || index}-${item.variant || index}`} className="flex justify-between gap-4 rounded-2xl bg-white/70 p-3 text-sm">
                       <div>
-                        <p className="font-bold text-emerald-950">{item.productName}</p>
+                        <p className="font-bold text-emerald-950">{item.productName || item.name}</p>
                         <p className="text-stone-500">{item.variant} × {item.quantity}</p>
                       </div>
                       <p className="font-bold text-emerald-950">
-                        {formatPrice(Number(item.priceUSD || 0) * Number(item.quantity || 1))}
+                        {formatPrice(Number(item.priceUSD || item.price || 0) * Number(item.quantity || 1))}
                       </p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-stone-500">Your cart is empty.</p>
+                  <p className="text-sm text-stone-500">
+                    Cart item details are loading. The subtotal will still be used for estimate.
+                  </p>
                 )}
               </div>
 
