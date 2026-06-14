@@ -104,7 +104,7 @@ export default function AdminNegotiationsPage() {
       }
 
       setSelectedNegotiation(data.negotiation)
-      setMessage('Store owner response saved successfully.')
+      setMessage(data.message || 'Store owner response saved successfully.')
       await loadNegotiations()
     } catch (error) {
       setMessage(error.message || 'Save failed.')

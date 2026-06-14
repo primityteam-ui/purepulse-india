@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Negotiation from '@/models/Negotiation'
+import { sendNegotiationEmail } from '@/lib/sendNegotiationEmail'
 
 const allowedStatuses = [
   'pending',
@@ -18,33 +19,6 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     const negotiationId = params.id
 
-    const update = {}
-
-    if (body.status && allowedStatuses.includes(body.status)) {
-      update.status = body.status
-    }
-
-    if (body.finalAgreedPriceUSD === '' || body.finalAgreedPriceUSD === null || body.finalAgreedPriceUSD === undefined) {
-      update.finalAgreedPriceUSD = null
-    } else {
-      const finalPrice = Number(body.finalAgreedPriceUSD)
-
-      if (Number.isNaN(finalPrice) || finalPrice < 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Please enter a valid final agreed price.'
-          },
-          { status: 400 }
-        )
-      }
-
-      update.finalAgreedPriceUSD = finalPrice
-    }
-
-    update.adminReply = body.adminReply || ''
-    update.adminNotes = body.adminNotes || ''
-
     const negotiation = await Negotiation.findById(negotiationId)
 
     if (!negotiation) {
@@ -57,15 +31,45 @@ export async function PUT(request, { params }) {
       )
     }
 
+    let finalAgreedPriceUSD = null
+
+    if (
+      body.finalAgreedPriceUSD !== '' &&
+      body.finalAgreedPriceUSD !== null &&
+      body.finalAgreedPriceUSD !== undefined
+    ) {
+      const finalPrice = Number(body.finalAgreedPriceUSD)
+
+      if (Number.isNaN(finalPrice) || finalPrice < 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Please enter a valid final or counter price.'
+          },
+          { status: 400 }
+        )
+      }
+
+      finalAgreedPriceUSD = finalPrice
+    }
+
+    const nextStatus =
+      body.status && allowedStatuses.includes(body.status)
+        ? body.status
+        : negotiation.status
+
     const existingReply = negotiation.adminReply || ''
-    const newReply = update.adminReply || ''
+    const newReply = body.adminReply || ''
 
-    negotiation.status = update.status || negotiation.status
-    negotiation.finalAgreedPriceUSD = update.finalAgreedPriceUSD
-    negotiation.adminReply = update.adminReply
-    negotiation.adminNotes = update.adminNotes
+    negotiation.status = nextStatus
+    negotiation.finalAgreedPriceUSD = finalAgreedPriceUSD
+    negotiation.adminReply = newReply
+    negotiation.adminNotes = body.adminNotes || ''
 
-    if (newReply.trim() && newReply.trim() !== existingReply.trim()) {
+    const shouldAddHistory =
+      newReply.trim() && newReply.trim() !== existingReply.trim()
+
+    if (shouldAddHistory) {
       negotiation.chatHistory.push({
         sender: 'admin',
         message: newReply.trim(),
@@ -75,9 +79,30 @@ export async function PUT(request, { params }) {
 
     await negotiation.save()
 
+    let emailResult = {
+      sent: false,
+      reason: 'No new admin response was added.'
+    }
+
+    if (shouldAddHistory) {
+      emailResult = await sendNegotiationEmail({
+        to: negotiation.customerEmail,
+        customerName: negotiation.customerName,
+        productName: negotiation.productName,
+        quantityKg: negotiation.quantityKg,
+        status: negotiation.status,
+        finalAgreedPriceUSD: negotiation.finalAgreedPriceUSD,
+        adminReply: newReply.trim()
+      })
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Negotiation response saved successfully.',
+      message: emailResult.sent
+        ? 'Store owner response saved and customer email notification sent.'
+        : `Store owner response saved. Email notification not sent: ${emailResult.reason}`,
+      emailSent: emailResult.sent,
+      emailReason: emailResult.reason || '',
       negotiation
     })
   } catch (error) {
