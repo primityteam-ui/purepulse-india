@@ -47,6 +47,9 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <CurrencySwitcher />
+          <Link href="/customer/account" className="rounded-full bg-white px-5 py-3 text-sm font-black text-green-950 shadow-sm">
+            My Account
+          </Link>
           <Link href="/cart" className="btn-secondary px-5">
             Cart {count > 0 ? `(${count})` : ''}
           </Link>
@@ -78,6 +81,9 @@ export default function Navbar() {
               </Link>
             ))}
             <CurrencySwitcher />
+            <Link href="/customer/account" onClick={() => setOpen(false)} className="rounded-2xl bg-white px-4 py-3 font-bold text-green-950">
+              My Account
+            </Link>
             <Link href="/cart" onClick={() => setOpen(false)} className="btn-secondary">
               Cart {count > 0 ? `(${count})` : ''}
             </Link>
