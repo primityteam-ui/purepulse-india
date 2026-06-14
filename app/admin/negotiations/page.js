@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 
-const statuses = ['pending', 'accepted', 'rejected', 'converted_to_order', 'counter', 'minimum_not_met']
+const statuses = ['pending', 'counter', 'accepted', 'rejected', 'minimum_not_met', 'converted_to_order']
 
 export default function AdminNegotiationsPage() {
   const [negotiations, setNegotiations] = useState([])
@@ -11,20 +11,11 @@ export default function AdminNegotiationsPage() {
   const [form, setForm] = useState({
     status: 'pending',
     finalAgreedPriceUSD: '',
+    adminReply: '',
     adminNotes: ''
-  })
-  const [convertForm, setConvertForm] = useState({
-    customerPhone: '',
-    line1: '',
-    line2: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [converting, setConverting] = useState(false)
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
 
@@ -62,8 +53,8 @@ export default function AdminNegotiationsPage() {
     return {
       total: negotiations.length,
       pending: negotiations.filter((item) => item.status === 'pending').length,
-      accepted: negotiations.filter((item) => item.status === 'accepted').length,
-      converted: negotiations.filter((item) => item.status === 'converted_to_order').length
+      counter: negotiations.filter((item) => item.status === 'counter').length,
+      accepted: negotiations.filter((item) => item.status === 'accepted').length
     }
   }, [negotiations])
 
@@ -72,16 +63,8 @@ export default function AdminNegotiationsPage() {
     setForm({
       status: negotiation.status || 'pending',
       finalAgreedPriceUSD: negotiation.finalAgreedPriceUSD ?? '',
+      adminReply: negotiation.adminReply || '',
       adminNotes: negotiation.adminNotes || ''
-    })
-    setConvertForm({
-      customerPhone: '',
-      line1: '',
-      line2: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: negotiation.customerCountry || ''
     })
     setMessage('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -94,23 +77,16 @@ export default function AdminNegotiationsPage() {
     }))
   }
 
-  function updateConvertField(name, value) {
-    setConvertForm((current) => ({
-      ...current,
-      [name]: value
-    }))
-  }
-
   async function saveNegotiation(event) {
     event.preventDefault()
 
     if (!selectedNegotiation?._id) {
-      setMessage('Select a negotiation first.')
+      setMessage('Select a request first.')
       return
     }
 
     setSaving(true)
-    setMessage('Saving negotiation...')
+    setMessage('Saving store owner response...')
 
     try {
       const response = await fetch(`/api/negotiations/${selectedNegotiation._id}`, {
@@ -124,54 +100,16 @@ export default function AdminNegotiationsPage() {
       const data = await response.json()
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Could not save negotiation')
+        throw new Error(data.error || 'Could not save response.')
       }
 
       setSelectedNegotiation(data.negotiation)
-      setMessage('Negotiation saved successfully.')
+      setMessage('Store owner response saved successfully.')
       await loadNegotiations()
     } catch (error) {
-      setMessage(error.message || 'Save failed')
+      setMessage(error.message || 'Save failed.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function convertToOrder() {
-    if (!selectedNegotiation?._id) {
-      setMessage('Select a negotiation first.')
-      return
-    }
-
-    const confirmed = window.confirm('Convert this negotiation into a manual order?')
-
-    if (!confirmed) return
-
-    setConverting(true)
-    setMessage('Converting negotiation to order...')
-
-    try {
-      const response = await fetch(`/api/negotiations/${selectedNegotiation._id}/convert`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(convertForm)
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Could not convert to order')
-      }
-
-      setSelectedNegotiation(data.negotiation)
-      setMessage(`Converted to order ${data.order.orderNumber}. Go to Admin Orders to manage it.`)
-      await loadNegotiations()
-    } catch (error) {
-      setMessage(error.message || 'Conversion failed')
-    } finally {
-      setConverting(false)
     }
   }
 
@@ -180,6 +118,15 @@ export default function AdminNegotiationsPage() {
     if (status === 'rejected' || status === 'minimum_not_met') return 'bg-red-100 text-red-700'
     if (status === 'counter') return 'bg-blue-100 text-blue-800'
     return 'bg-yellow-100 text-yellow-800'
+  }
+
+  function statusLabel(status) {
+    return String(status || 'pending').replaceAll('_', ' ')
+  }
+
+  function formatMoney(value) {
+    const number = Number(value || 0)
+    return `$${number.toFixed(2)}`
   }
 
   function formatDate(value) {
@@ -193,9 +140,9 @@ export default function AdminNegotiationsPage() {
         <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
             <div className="badge-premium mb-4">Admin Negotiations</div>
-            <h1 className="text-5xl font-black text-green-950">Manage Bulk Price Offers</h1>
+            <h1 className="text-5xl font-black text-green-950">Manage Bulk Price Requests</h1>
             <p className="mt-3 text-lg text-green-950/60">
-              Review customer offers, accept or reject deals, add notes, and convert accepted offers into orders.
+              Review customer offers, send a counter price, accept, reject, and keep internal notes.
             </p>
           </div>
 
@@ -212,7 +159,7 @@ export default function AdminNegotiationsPage() {
 
         <div className="mb-8 grid gap-5 md:grid-cols-4">
           <div className="card-premium p-5">
-            <div className="text-sm font-black text-green-950/50">Total Offers</div>
+            <div className="text-sm font-black text-green-950/50">Total Requests</div>
             <div className="mt-2 text-4xl font-black text-green-950">{totals.total}</div>
           </div>
 
@@ -222,31 +169,31 @@ export default function AdminNegotiationsPage() {
           </div>
 
           <div className="card-premium p-5">
-            <div className="text-sm font-black text-green-950/50">Accepted</div>
-            <div className="mt-2 text-4xl font-black text-green-950">{totals.accepted}</div>
+            <div className="text-sm font-black text-green-950/50">Counter Sent</div>
+            <div className="mt-2 text-4xl font-black text-green-950">{totals.counter}</div>
           </div>
 
           <div className="card-premium p-5">
-            <div className="text-sm font-black text-green-950/50">Converted</div>
-            <div className="mt-2 text-4xl font-black text-green-950">{totals.converted}</div>
+            <div className="text-sm font-black text-green-950/50">Accepted</div>
+            <div className="mt-2 text-4xl font-black text-green-950">{totals.accepted}</div>
           </div>
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-[1fr_1.15fr]">
+        <div className="grid gap-8 xl:grid-cols-[1fr_1.2fr]">
           <form onSubmit={saveNegotiation} className="card-premium h-fit p-6 md:p-8">
             <h2 className="mb-6 text-3xl font-black text-green-950">
-              {selectedNegotiation ? `Edit Offer` : 'Select an Offer'}
+              {selectedNegotiation ? 'Respond to Customer Offer' : 'Select a Request'}
             </h2>
 
             {!selectedNegotiation ? (
-              <div className="rounded-3xl bg-green-50 p-6 text-green-950/65">
-                Click an offer from the table to view and manage it.
+              <div className="rounded-3xl bg-green-50 p-6 font-semibold text-green-950/65">
+                Click any request from the table to view details and respond.
               </div>
             ) : (
               <div className="grid gap-5">
                 <div className="rounded-3xl bg-green-50 p-5">
                   <h3 className="text-xl font-black text-green-950">Customer</h3>
-                  <div className="mt-3 space-y-1 text-sm font-semibold text-green-950/65">
+                  <div className="mt-3 space-y-1 text-sm font-semibold text-green-950/70">
                     <p><strong>Name:</strong> {selectedNegotiation.customerName}</p>
                     <p><strong>Email:</strong> {selectedNegotiation.customerEmail}</p>
                     <p><strong>Country:</strong> {selectedNegotiation.customerCountry || '-'}</p>
@@ -254,234 +201,173 @@ export default function AdminNegotiationsPage() {
                 </div>
 
                 <div className="rounded-3xl bg-[#fff7df] p-5">
-                  <h3 className="text-xl font-black text-green-950">Offer Details</h3>
+                  <h3 className="text-xl font-black text-green-950">Request Details</h3>
                   <div className="mt-3 space-y-2 text-sm font-semibold text-green-950/70">
                     <p><strong>Product:</strong> {selectedNegotiation.productName}</p>
+                    <p><strong>Variant:</strong> {selectedNegotiation.variant || '-'}</p>
                     <p><strong>Quantity:</strong> {selectedNegotiation.quantityKg}kg</p>
-                    <p><strong>Listed Price:</strong> ${Number(selectedNegotiation.listedPriceUSD || 0).toFixed(2)}/kg</p>
-                    <p><strong>Customer Offer:</strong> ${Number(selectedNegotiation.offeredPriceUSD || 0).toFixed(2)}/kg</p>
-                    <p><strong>Bot Reply:</strong> {selectedNegotiation.botReply || '-'}</p>
+                    <p><strong>Customer Offer:</strong> {formatMoney(selectedNegotiation.offeredPriceUSD)}</p>
+                    <p><strong>Listed Estimate:</strong> {formatMoney(selectedNegotiation.listedPriceUSD)}</p>
+                    <p><strong>Customer Message:</strong> {selectedNegotiation.message || '-'}</p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label>
-                    <span className="mb-2 block text-sm font-black text-green-950/60">Status</span>
-                    <select
-                      className="input-premium"
-                      value={form.status}
-                      onChange={(e) => updateField('status', e.target.value)}
-                    >
-                      {statuses.map((status) => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
-                  </label>
+                <label className="grid gap-2">
+                  <span className="text-sm font-black text-green-950">Status</span>
+                  <select
+                    value={form.status}
+                    onChange={(event) => updateField('status', event.target.value)}
+                    className="rounded-2xl border border-green-950/10 bg-white px-4 py-3 font-semibold text-green-950 outline-none"
+                  >
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {statusLabel(status)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-                  <label>
-                    <span className="mb-2 block text-sm font-black text-green-950/60">
-                      Final agreed price USD/kg
-                    </span>
-                    <input
-                      className="input-premium"
-                      type="number"
-                      step="0.01"
-                      value={form.finalAgreedPriceUSD}
-                      onChange={(e) => updateField('finalAgreedPriceUSD', e.target.value)}
-                    />
-                  </label>
-                </div>
+                <label className="grid gap-2">
+                  <span className="text-sm font-black text-green-950">Final or Counter Price USD</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.finalAgreedPriceUSD}
+                    onChange={(event) => updateField('finalAgreedPriceUSD', event.target.value)}
+                    className="rounded-2xl border border-green-950/10 bg-white px-4 py-3 font-semibold text-green-950 outline-none"
+                    placeholder="Example: 1500"
+                  />
+                </label>
 
-                <textarea
-                  className="input-premium min-h-28"
-                  placeholder="Admin notes"
-                  value={form.adminNotes}
-                  onChange={(e) => updateField('adminNotes', e.target.value)}
-                />
+                <label className="grid gap-2">
+                  <span className="text-sm font-black text-green-950">Message to Customer</span>
+                  <textarea
+                    rows={5}
+                    value={form.adminReply}
+                    onChange={(event) => updateField('adminReply', event.target.value)}
+                    className="rounded-2xl border border-green-950/10 bg-white px-4 py-3 font-semibold text-green-950 outline-none"
+                    placeholder="Example: We can offer this quantity at $1.45/kg. Please confirm your delivery location and timeline."
+                  />
+                </label>
 
-                <button disabled={saving} className="btn-primary w-full">
-                  {saving ? 'Saving...' : 'Save Negotiation'}
+                <label className="grid gap-2">
+                  <span className="text-sm font-black text-green-950">Internal Admin Notes</span>
+                  <textarea
+                    rows={4}
+                    value={form.adminNotes}
+                    onChange={(event) => updateField('adminNotes', event.target.value)}
+                    className="rounded-2xl border border-green-950/10 bg-white px-4 py-3 font-semibold text-green-950 outline-none"
+                    placeholder="Private note for store owner/admin only."
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? 'Saving...' : 'Save Store Owner Response'}
                 </button>
-
-                <div className="rounded-3xl border border-green-900/10 bg-white p-5">
-                  <h3 className="text-xl font-black text-green-950">Convert to Manual Order</h3>
-                  <p className="mt-2 text-sm leading-6 text-green-950/60">
-                    Use this after the customer accepts the deal. The order will appear in Admin Orders.
-                  </p>
-
-                  <div className="mt-5 grid gap-4">
-                    <input
-                      className="input-premium"
-                      placeholder="Customer phone"
-                      value={convertForm.customerPhone}
-                      onChange={(e) => updateConvertField('customerPhone', e.target.value)}
-                    />
-
-                    <input
-                      className="input-premium"
-                      placeholder="Address line 1"
-                      value={convertForm.line1}
-                      onChange={(e) => updateConvertField('line1', e.target.value)}
-                    />
-
-                    <input
-                      className="input-premium"
-                      placeholder="Address line 2"
-                      value={convertForm.line2}
-                      onChange={(e) => updateConvertField('line2', e.target.value)}
-                    />
-
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <input
-                        className="input-premium"
-                        placeholder="City"
-                        value={convertForm.city}
-                        onChange={(e) => updateConvertField('city', e.target.value)}
-                      />
-
-                      <input
-                        className="input-premium"
-                        placeholder="State"
-                        value={convertForm.state}
-                        onChange={(e) => updateConvertField('state', e.target.value)}
-                      />
-
-                      <input
-                        className="input-premium"
-                        placeholder="Postal code"
-                        value={convertForm.postalCode}
-                        onChange={(e) => updateConvertField('postalCode', e.target.value)}
-                      />
-                    </div>
-
-                    <input
-                      className="input-premium"
-                      placeholder="Country"
-                      value={convertForm.country}
-                      onChange={(e) => updateConvertField('country', e.target.value)}
-                    />
-
-                    <button
-                      type="button"
-                      disabled={converting}
-                      onClick={convertToOrder}
-                      className="btn-secondary w-full"
-                    >
-                      {converting ? 'Converting...' : 'Convert to Order'}
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
           </form>
 
-          <div>
-            <div className="card-premium mb-5 p-5">
+          <div className="card-premium overflow-hidden">
+            <div className="border-b border-green-950/10 p-5">
               <input
-                className="input-premium"
-                placeholder="Search offers by product, customer, email, country, status..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full rounded-2xl border border-green-950/10 bg-white px-4 py-3 font-semibold text-green-950 outline-none"
+                placeholder="Search by product, customer, email, country, or status"
               />
             </div>
 
-            <div className="card-premium overflow-hidden">
-              <div className="border-b border-green-900/10 p-5">
-                <h2 className="text-2xl font-black text-green-950">
-                  Offers {loading ? '' : `(${filteredNegotiations.length})`}
-                </h2>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-left">
+                <thead className="bg-green-50 text-sm font-black text-green-950/65">
+                  <tr>
+                    <th className="p-4">Product</th>
+                    <th className="p-4">Customer</th>
+                    <th className="p-4">Country</th>
+                    <th className="p-4">Qty</th>
+                    <th className="p-4">Offer</th>
+                    <th className="p-4">Listed</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Date</th>
+                  </tr>
+                </thead>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1050px] border-collapse">
-                  <thead>
-                    <tr className="bg-green-50 text-left text-sm text-green-950/60">
-                      <th className="p-4 font-black">Product</th>
-                      <th className="p-4 font-black">Customer</th>
-                      <th className="p-4 font-black">Country</th>
-                      <th className="p-4 font-black">Qty</th>
-                      <th className="p-4 font-black">Offer</th>
-                      <th className="p-4 font-black">Listed</th>
-                      <th className="p-4 font-black">Status</th>
-                      <th className="p-4 font-black">Date</th>
-                      <th className="p-4 font-black">Action</th>
+                <tbody className="divide-y divide-green-950/10">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="8" className="p-6 text-center font-bold text-green-950/60">
+                        Loading requests...
+                      </td>
                     </tr>
-                  </thead>
-
-                  <tbody>
-                    {filteredNegotiations.map((item) => (
-                      <tr key={item._id} className="border-t border-green-900/10">
-                        <td className="p-4">
-                          <div className="font-black text-green-950">{item.productName}</div>
-                          <div className="text-xs font-bold text-green-950/45">
-                            Final: {item.finalAgreedPriceUSD ? `$${Number(item.finalAgreedPriceUSD).toFixed(2)}/kg` : '-'}
+                  ) : filteredNegotiations.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="p-6 text-center font-bold text-green-950/60">
+                        No bulk price requests found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredNegotiations.map((item) => (
+                      <tr
+                        key={item._id}
+                        onClick={() => openNegotiation(item)}
+                        className="cursor-pointer transition hover:bg-green-50/70"
+                      >
+                        <td className="p-4 font-black text-green-950">
+                          {item.productName}
+                          <div className="mt-1 text-xs font-semibold text-green-950/50">
+                            {item.variant || ''}
                           </div>
                         </td>
-
-                        <td className="p-4">
-                          <div className="font-black text-green-950">{item.customerName}</div>
-                          <div className="text-xs font-bold text-green-950/45">{item.customerEmail}</div>
+                        <td className="p-4 font-bold text-green-950">
+                          {item.customerName}
+                          <div className="mt-1 text-xs font-semibold text-green-950/50">
+                            {item.customerEmail}
+                          </div>
                         </td>
-
-                        <td className="p-4 font-bold text-green-950/65">{item.customerCountry || '-'}</td>
-
-                        <td className="p-4 font-black text-green-950">{Number(item.quantityKg || 0)}kg</td>
-
-                        <td className="p-4 font-black text-green-950">
-                          ${Number(item.offeredPriceUSD || 0).toFixed(2)}
-                        </td>
-
-                        <td className="p-4 font-black text-green-950">
-                          ${Number(item.listedPriceUSD || 0).toFixed(2)}
-                        </td>
-
+                        <td className="p-4 font-bold text-green-950/70">{item.customerCountry || '-'}</td>
+                        <td className="p-4 font-black text-green-950">{item.quantityKg}kg</td>
+                        <td className="p-4 font-black text-green-950">{formatMoney(item.offeredPriceUSD)}</td>
+                        <td className="p-4 font-black text-green-950">{formatMoney(item.listedPriceUSD)}</td>
                         <td className="p-4">
                           <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass(item.status)}`}>
-                            {item.status}
+                            {statusLabel(item.status)}
                           </span>
                         </td>
-
-                        <td className="p-4 text-sm font-bold text-green-950/55">
-                          {formatDate(item.createdAt)}
-                        </td>
-
-                        <td className="p-4">
-                          <button
-                            onClick={() => openNegotiation(item)}
-                            className="rounded-full bg-green-950 px-4 py-2 text-sm font-black text-white"
-                          >
-                            Open
-                          </button>
-                        </td>
+                        <td className="p-4 text-sm font-bold text-green-950/60">{formatDate(item.createdAt)}</td>
                       </tr>
-                    ))}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                    {!loading && filteredNegotiations.length === 0 && (
-                      <tr>
-                        <td colSpan="9" className="p-10 text-center font-black text-green-950/50">
-                          No negotiation offers found.
-                        </td>
-                      </tr>
-                    )}
-
-                    {loading && (
-                      <tr>
-                        <td colSpan="9" className="p-10 text-center font-black text-green-950/50">
-                          Loading negotiation offers...
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+            {selectedNegotiation?.chatHistory?.length > 0 && (
+              <div className="border-t border-green-950/10 p-5">
+                <h3 className="mb-4 text-xl font-black text-green-950">Request History</h3>
+                <div className="space-y-3">
+                  {selectedNegotiation.chatHistory.map((chat, index) => (
+                    <div
+                      key={`${chat.timestamp}-${index}`}
+                      className="rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-950/75"
+                    >
+                      <div className="mb-1 font-black capitalize text-green-950">
+                        {chat.sender === 'admin' ? 'Store Owner' : 'Customer'}
+                      </div>
+                      <div>{chat.message}</div>
+                      <div className="mt-2 text-xs text-green-950/45">
+                        {formatDate(chat.timestamp || chat.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div className="mt-5 rounded-3xl bg-green-950 p-5 text-white">
-              <h3 className="font-black">Business workflow</h3>
-              <p className="mt-2 text-sm leading-6 text-white/65">
-                Customer negotiates bulk price → owner reviews offer here → owner accepts/rejects → accepted deal can be converted into a manual order.
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>
