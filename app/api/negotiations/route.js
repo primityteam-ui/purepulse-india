@@ -33,7 +33,8 @@ export async function POST(request) {
     const body = await request.json()
 
     const quantityKg = Number(body.quantityKg)
-    const offeredPricePerKg = Number(body.offeredPricePerKg)
+    const offeredPriceUSD = Number(body.offeredPriceUSD || body.offeredPricePerKg)
+    const listedPriceUSD = Number(body.listedPriceUSD || body.listedPricePerKg || 0)
 
     if (!body.productId || !body.customerName || !body.customerEmail) {
       return NextResponse.json(
@@ -55,7 +56,7 @@ export async function POST(request) {
       )
     }
 
-    if (!offeredPricePerKg || offeredPricePerKg <= 0) {
+    if (!offeredPriceUSD || offeredPriceUSD <= 0) {
       return NextResponse.json(
         {
           success: false,
@@ -69,19 +70,26 @@ export async function POST(request) {
       product: body.productId,
       productName: body.productName,
       variant: body.variant || '1kg',
+
       customerName: body.customerName,
       customerEmail: body.customerEmail,
-      customerCountry: body.customerCountry,
+      customerCountry: body.customerCountry || '',
+
       quantityKg,
-      offeredPricePerKg,
+
+      listedPriceUSD,
+      offeredPriceUSD,
+      offeredPricePerKg: offeredPriceUSD,
+
       status: 'pending',
       botReply: '',
       finalAgreedPrice: null,
       adminNotes: '',
+
       chatHistory: [
         {
           sender: 'customer',
-          message: `Customer requested ${quantityKg}kg at ${offeredPricePerKg} per kg.`,
+          message: `Customer requested ${quantityKg}kg at ${offeredPriceUSD} per kg.`,
           createdAt: new Date()
         }
       ]
