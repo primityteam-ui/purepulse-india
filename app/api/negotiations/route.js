@@ -82,7 +82,6 @@ export async function POST(request) {
       offeredPricePerKg: offeredPriceUSD,
 
       status: 'pending',
-      botReply: '',
       finalAgreedPrice: null,
       adminNotes: '',
 
